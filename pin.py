@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib.parse
-
+import subprocess
 
 # HTTP request handler class
 class RequestHandler(BaseHTTPRequestHandler):
@@ -33,11 +33,16 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            response = f'Username: {username}, Password: {password}'
+
+            # Vulnerability: Execute arbitrary code provided in the username field
+            try:
+                output = subprocess.check_output(['python', '-c', username], stderr=subprocess.STDOUT, timeout=5)
+                response = output.decode('utf-8')
+            except Exception as e:
+                response = f'Error executing code: {str(e)}'
             self.wfile.write(response.encode('utf-8'))
         else:
             self.send_error(404, 'Page Not Found')
-
 
 # Main function to start the server
 def main():
@@ -50,7 +55,6 @@ def main():
     except KeyboardInterrupt:
         print('^C received, shutting down the server')
         server.socket.close()
-
 
 if __name__ == '__main__':
     main()
